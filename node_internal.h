@@ -21,6 +21,8 @@ protected:
 public:
     int id;
     V2 position;
+    V2 velocity;
+    V2 acceleration;
     
     godot::Node3D* owning_game_node;
     godot::CCNode3D* owning_node;

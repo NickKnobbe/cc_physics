@@ -11,6 +11,7 @@ public:
     BasicTimer(double time_per);
     void begin();
     int process(double delta);
+    double get_progress();
 };
 
 #endif

@@ -5,10 +5,13 @@
 NodeInternal::NodeInternal() {
     circle_colliders = std::vector<CircleColl>();
     controllers = std::vector<BehaviorController>();
+    position = V2();
+    velocity = V2();
+    acceleration = V2();
 }
 
 NodeInternal::~NodeInternal() {
-    
+
 }
 
 void NodeInternal::add_circle_coll(const godot::Vector2 _center_offset, const float _radius) {

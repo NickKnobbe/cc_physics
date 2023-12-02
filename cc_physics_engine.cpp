@@ -49,25 +49,21 @@ void CCPhysicsEngine::_process(double delta) {
         // map kv iter, ~173 fps
         // cycle list full holder iter, 165 fps
 
+        double progress = physics_process_timer.time_since_last_action;        
+
         for (auto& [key, value] : trackedObjects) {
             if (value.owning_game_node) {
-                Vector3 before_pos = value.owning_game_node->get_position();
-                V2 next_pos = V2(before_pos.x, before_pos.y);
-                V2 input_add = V2();
-
-
-                if (value.controllers.size() > 0) {
-                    input_add.x = value.controllers[0].input_direction.x * delta;
-                    input_add.y = value.controllers[0].input_direction.y * delta;
-                }
-
-                next_pos = next_pos + input_add;
+                double zPos = value.owning_game_node->get_position().z;
+                V2 next_pos = V2(
+                    value.position.x + (progress * value.velocity.x), 
+                    value.position.y + (progress * value.velocity.y)
+                    );
 
                 Vector3 commit_next_pos = Vector3
                 (
                     next_pos.x,
                     next_pos.y, 
-                    before_pos.z
+                    zPos
                 );
                 value.owning_game_node->set_position(commit_next_pos);
             }
@@ -119,9 +115,41 @@ void CCPhysicsEngine::custom_phys_process(double delta) {
             run_diagnosis();
         }
     }
+
+    // New positions from former velocity
+    for (auto& [key, value] : trackedObjects) {
+        if (value.owning_game_node) {
+            //Vector3 before_pos = value.owning_game_node->get_position();
+
+            // New positions from former velocity
+            V2 beforePos = value.position;
+            value.position.x += value.velocity.x * delta;
+            value.position.y += value.velocity.y * delta;
+        }
+        else {
+            UtilityFunctions::print(Variant("CC_PHYS: Owning game node uninitialized!"));
+        }
+    }
+
     //broad_phase();
     //narrow_phase();
     //evaluate_phase();
+
+
+    for (auto& [key, value] : trackedObjects) {
+        if (value.owning_game_node) {
+            // Keeps it zero before input for now
+            value.velocity = V2(0.0, 0.0);
+            
+            // Velocity updates
+            if (value.controllers.size() > 0) {
+                value.velocity = value.velocity + value.controllers[0].input_direction;
+            }
+        }
+        else {
+            UtilityFunctions::print(Variant("CC_PHYS: Owning game node uninitialized!"));
+        }
+    }
 }
 
 void CCPhysicsEngine::ai_process(double delta) {

@@ -16,3 +16,7 @@ int BasicTimer::process(double delta) {
     }
     return actions;
 }
+
+double BasicTimer::get_progress() {
+    return time_since_last_action / time_per_action;
+}
