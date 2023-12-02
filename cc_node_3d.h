@@ -3,10 +3,12 @@
 
 #include <godot_cpp/classes/node3d.hpp>
 #include <circle_coll.h>
-#include <node_internal.h>
-#include <cc_physics_engine.h>
+
+class NodeInternal;
 
 namespace godot {
+    class CCPhysicsEngine;
+
     class CCNode3D : public Node3D {
         GDCLASS(CCNode3D, Node3D)
 
@@ -36,7 +38,7 @@ namespace godot {
         void set_velocity(const Vector2 vel);
 
         void add_circle_coll(const Vector2 _center_offset, const float _radius);
-        std::vector<CircleColl*> get_circle_colls();
+        std::vector<CircleColl> get_circle_colls();
 
         void add_behavior_controller(int selection);
 

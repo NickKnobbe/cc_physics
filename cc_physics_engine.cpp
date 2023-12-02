@@ -17,9 +17,9 @@ CCPhysicsEngine::CCPhysicsEngine() {
     // was the instantiation of the custom CycleList type in the constructor.
     //trackedCollHolders = CycleList<CCColliderHolder*>();//std::vector<CCColliderHolder*>();
     //trackedCollHolders.reserve(COLL_HOLDER_CAPACITY);
-    trackedColls = std::vector<CircleColl*>();
-    potentialCollisions = std::vector<CircleColl*>();
-    confirmedCollisions = std::vector<CircleColl*>();
+    trackedColls = std::vector<CircleColl>();
+    potentialCollisions = std::vector<CircleColl>();
+    confirmedCollisions = std::vector<CircleColl>();
 }
 
 CCPhysicsEngine::~CCPhysicsEngine() {
@@ -50,15 +50,15 @@ void CCPhysicsEngine::_process(double delta) {
         // cycle list full holder iter, 165 fps
 
         for (auto& [key, value] : trackedObjects) {
-            if (value->owning_game_node) {
-                Vector3 before_pos = value->owning_game_node->get_position();
+            if (value.owning_game_node) {
+                Vector3 before_pos = value.owning_game_node->get_position();
                 V2 next_pos = V2(before_pos.x, before_pos.y);
                 V2 input_add = V2();
 
 
-                if (value->controllers.size() > 0) {
-                    input_add.x = value->controllers[0]->input_direction.x * delta;
-                    input_add.y = value->controllers[0]->input_direction.y * delta;
+                if (value.controllers.size() > 0) {
+                    input_add.x = value.controllers[0].input_direction.x * delta;
+                    input_add.y = value.controllers[0].input_direction.y * delta;
                 }
 
                 next_pos = next_pos + input_add;
@@ -69,7 +69,7 @@ void CCPhysicsEngine::_process(double delta) {
                     next_pos.y, 
                     before_pos.z
                 );
-                value->owning_game_node->set_position(commit_next_pos);
+                value.owning_game_node->set_position(commit_next_pos);
             }
             else {
                 UtilityFunctions::print(Variant("CC_PHYS: Owning game node uninitialized!"));
@@ -175,28 +175,28 @@ void CCPhysicsEngine::narrow_phase() {
     bool getOut = false;
     while (!potentialCollisions.empty()) {
 
-        CircleColl* next = potentialCollisions.back();
+        CircleColl next = potentialCollisions.back();
         potentialCollisions.pop_back();
         if (waiting) {
-            if (waiting->is_colliding_with(next)) {
+            if (waiting->is_colliding_with(&next)) {
                 ++collision_compare_count_since_check;
                 // confirmedCollisions.push_back(waiting);
                 // confirmedCollisions.push_back(next);
-                evaluate_collision(waiting, next);
+                evaluate_collision(*waiting, next);
                 waiting = nullptr;
             }
         }
         else {
-            waiting = next;
+            waiting = &next;
         }
     }
 }
 
-void CCPhysicsEngine::track_node_internal(NodeInternal* node_internal) {
-    trackedObjects[node_internal->id] = node_internal;
+void CCPhysicsEngine::track_node_internal(NodeInternal& node_internal) {
+    trackedObjects[node_internal.id] = node_internal;
 }
 
-void CCPhysicsEngine::evaluate_collision(CircleColl* a, CircleColl* b) {
+void CCPhysicsEngine::evaluate_collision(CircleColl& a, CircleColl& b) {
     ++collision_eval_count_since_check;
     //UtilityFunctions::print(Variant("CC_PHYS: Collision encountered!"));
 }

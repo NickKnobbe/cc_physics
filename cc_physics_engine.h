@@ -23,13 +23,13 @@ namespace godot {
 
         //CycleQueue<CCColliderHolder> toEvaluate;
         //CycleList<CCColliderHolder*> trackedCollHolders;
-        std::vector<CircleColl*> trackedColls;
-        std::vector<CircleColl*> potentialCollisions;
-        std::vector<CircleColl*> confirmedCollisions;
+        std::vector<CircleColl> trackedColls;
+        std::vector<CircleColl> potentialCollisions;
+        std::vector<CircleColl> confirmedCollisions;
 
         protected:
         bool diagnosis_on = false;
-        std::unordered_map<int, NodeInternal*> trackedObjects;
+        std::unordered_map<int, NodeInternal> trackedObjects;
 
         long frames_since_check = 0;
         int frames_between_checks = 300;
@@ -53,12 +53,12 @@ namespace godot {
         void ai_process(double delta);
 
         //void track_collider(CCCircleCollider* node);
-        void track_node_internal(NodeInternal* node_internal);
+        void track_node_internal(NodeInternal& node_internal);
 
         void broad_phase();
         void narrow_phase();
         void evaluate_phase();
-        void evaluate_collision(CircleColl* a, CircleColl* b);
+        void evaluate_collision(CircleColl& a, CircleColl& b);
 
         void run_diagnosis();
     };

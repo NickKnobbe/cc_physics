@@ -1,13 +1,15 @@
 #ifndef CC_NODE_INTERNAL 
 #define CC_NODE_INTERNAL 
 
+#include <v2.h>
 #include <godot_cpp/classes/node3d.hpp>
 #include <circle_coll.h>
+#include <behavior_controller.h>
 
-class godot::Node3D;
-class godot::CCNode3D;
-class BehaviorController;
-class V2;
+namespace godot {
+    class Node3D;
+    class CCNode3D;
+}
 
 class NodeInternal {
 private:
@@ -23,14 +25,14 @@ public:
     godot::Node3D* owning_game_node;
     godot::CCNode3D* owning_node;
 
-    std::vector<CircleColl*> circle_colliders;
-    std::vector<BehaviorController*> controllers;
+    std::vector<CircleColl> circle_colliders;
+    std::vector<BehaviorController> controllers;
 
     NodeInternal();
     ~NodeInternal();
 
-    void add_circle_coll(const Vector2 _center_offset, const float _radius);
-    std::vector<CircleColl*> get_circle_colls();
+    void add_circle_coll(const godot::Vector2 _center_offset, const float _radius);
+    std::vector<CircleColl> get_circle_colls();
 };
 
 #endif
