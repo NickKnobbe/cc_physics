@@ -15,5 +15,9 @@ CircleColl::CircleColl(V2 _center_offset, float _radius, int _owner_id) {
 CircleColl::~CircleColl() {}
 
 bool CircleColl::is_colliding_with(CircleColl* other) {
-    
+    float dist = position.dist_sqd(other->position);
+    if (dist <= (radius_squared + other->radius_squared) * 2) {
+        return true;
+    }
+    return false;
 }

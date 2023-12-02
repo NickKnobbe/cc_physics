@@ -1,18 +1,22 @@
 #include "cc_physics_engine.h"
-#include <cc_circle_collider.h>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <behavior_controller.h>
 
 using namespace godot;
 
 void CCPhysicsEngine::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("track_collider_holder"), &CCPhysicsEngine::track_collider_holder);
     ClassDB::bind_method(D_METHOD("initialize", "time_per_custom_process"), &CCPhysicsEngine::initialize);
+    ClassDB::bind_method(D_METHOD("set_diagnosis", "diagnosis_on"), &CCPhysicsEngine::set_diagnosis);
 }
 
 CCPhysicsEngine::CCPhysicsEngine() {
-    trackedCollHolders = std::vector<CCColliderHolder*>();
+    frames_between_checks = 300; // ~5 seconds
+    // Note that at one point, the difference between the engine starting or not 
+    // was the instantiation of the custom CycleList type in the constructor.
+    //trackedCollHolders = CycleList<CCColliderHolder*>();//std::vector<CCColliderHolder*>();
+    //trackedCollHolders.reserve(COLL_HOLDER_CAPACITY);
     trackedColls = std::vector<CircleColl*>();
     potentialCollisions = std::vector<CircleColl*>();
     confirmedCollisions = std::vector<CircleColl*>();
@@ -23,66 +27,143 @@ CCPhysicsEngine::~CCPhysicsEngine() {
 }
 
 void CCPhysicsEngine::initialize(double time_per_custom_process) {
-    time_per_process = time_per_custom_process;
     initialized = true;
     UtilityFunctions::print(Variant("CC_PHYS: Custom physics engine initialized!"));
 }
 
 void CCPhysicsEngine::_process(double delta) {
     if (!Engine::get_singleton()->is_editor_hint() && initialized) {
-        time_passed += delta;
+        int phys_ticks = physics_process_timer.process(delta);
+        int ai_ticks = ai_process_timer.process(delta);
 
-        for (auto& [key, value] : idToHolderMap) {
-            if (value->owning_node) {
-                Vector3 pos = value->owning_node->get_position();
-                Vector3 next_pos = Vector3
-                    (
-                        pos.x + value->input_direction.x * delta,
-                        pos.y + value->input_direction.y * delta, 
-                        pos.z
-                    );
-                value->owning_node->set_position(next_pos);
-                V2 next_pos_v2 = V2(next_pos.x, next_pos.y);
-                value->position = next_pos_v2;
-                for (auto i : value->held_colliders) {
-                    i->position = next_pos_v2 + i->center_offset;
+        while (phys_ticks > 0) {
+            custom_phys_process(physics_process_timer.time_per_action);
+            --phys_ticks;
+        }
+        
+        while (ai_ticks > 0) {
+            ai_process(ai_process_timer.time_per_action);
+            --ai_ticks;
+        }
+        // vec full holder iter, 183 fps
+        // map kv iter, ~173 fps
+        // cycle list full holder iter, 165 fps
+
+        for (auto& [key, value] : trackedObjects) {
+            if (value->owning_game_node) {
+                Vector3 before_pos = value->owning_game_node->get_position();
+                V2 next_pos = V2(before_pos.x, before_pos.y);
+                V2 input_add = V2();
+
+
+                if (value->controllers.size() > 0) {
+                    input_add.x = value->controllers[0]->input_direction.x * delta;
+                    input_add.y = value->controllers[0]->input_direction.y * delta;
                 }
+
+                next_pos = next_pos + input_add;
+
+                Vector3 commit_next_pos = Vector3
+                (
+                    next_pos.x,
+                    next_pos.y, 
+                    before_pos.z
+                );
+                value->owning_game_node->set_position(commit_next_pos);
+            }
+            else {
+                UtilityFunctions::print(Variant("CC_PHYS: Owning game node uninitialized!"));
             }
         }
 
-        while (time_since_last_process > time_per_process) {
-            time_since_last_process -= time_per_process;
-            custom_phys_process(time_per_process);
-        }
+        // Note that a null reference exception caused the running game to not crash, but rather exit this function.
+/*         int siz = trackedCollHolders.size_filled();
+        for (int i = 0; i < siz; ++i) {
+            CCColliderHolder* next_obj = *(trackedCollHolders.peek_advance_next());
+            if (next_obj->owning_node) {
+                Vector3 pos = next_obj->owning_node->get_position();
+                //UtilityFunctions::print(Variant(pos)); // this worked
+                Vector3 next_pos = Vector3
+                    (
+                        pos.x + 0.5 * delta,//value->input_direction.x * delta,
+                        pos.y + 0.4 * delta,//value->input_direction.y * delta, 
+                        pos.z
+                    );
+                //UtilityFunctions::print(Variant("CC_PHYS: pos :"), pos, Variant(" next_pos: "), next_pos);
+                //UtilityFunctions::print(Variant("CC_PHYS: A!"));
+                next_obj->owning_node->set_position(next_pos);
+                //Vector3 pos2 = next_obj->owning_node->get_position();
+
+                //UtilityFunctions::print(Variant("CC_PHYS: B!"));
+                V2 next_pos_v2 = V2(next_pos.x, next_pos.y);
+                next_obj->position = next_pos_v2;
+                for (auto i : next_obj->held_colliders) {
+                    i->position = next_pos_v2 + i->center_offset;
+                }
+            }
+            else {
+                UtilityFunctions::print(Variant("CC_PHYS: Owning node uninitialized!"));
+            }
+        } */
     }
 }
 
-void CCPhysicsEngine::custom_phys_process(double delta) {
-    broad_phase();
-    narrow_phase();
-    evaluate_phase();
+void CCPhysicsEngine::set_diagnosis(bool _diagnosis_on) {
+    diagnosis_on = _diagnosis_on;
 }
 
-void CCPhysicsEngine::track_collider_holder(CCColliderHolder* holder) {
+void CCPhysicsEngine::custom_phys_process(double delta) {
+    if (diagnosis_on) {
+        ++frames_since_check;
+        if (frames_since_check >= frames_between_checks) {
+            run_diagnosis();
+        }
+    }
+    //broad_phase();
+    //narrow_phase();
+    //evaluate_phase();
+}
+
+void CCPhysicsEngine::ai_process(double delta) {
+
+}
+
+/* void CCPhysicsEngine::track_collider_holder(CCColliderHolder* holder) {
     idToHolderMap[holder->owner_id] = holder;
-    trackedCollHolders.push_back(holder);
+    //trackedCollHolders.push_back(holder);
+    trackedCollHolders.fill_next(holder);
     std::vector<CircleColl*> colls = holder->get_circle_colls();
     for (auto i : colls) {
         trackedColls.push_back(i);
     }
 }
 
+void CCPhysicsEngine::track_controller(CCController* controller) {
+    idToControllerMap[controller->owner_id] = controller;
+    if (trackedIds)
+    //trackedCollHolders.push_back(holder);
+    trackedCollHolders.fill_next(holder);
+    std::vector<CircleColl*> colls = holder->get_circle_colls();
+    for (auto i : colls) {
+        trackedColls.push_back(i);
+    }
+} */
+
 // Gather potentials collisions
 void CCPhysicsEngine::broad_phase() {
     potentialCollisions.clear();
     for (auto i : trackedColls) {
         for (auto j : trackedColls) {
-            if (i->owner_id != j->owner_id) {
+            if (diagnosis_on) {
+                ++broad_compare_since_check;
+            }
+            //if (i->owner_id != j->owner_id) {
                 potentialCollisions.push_back(i);
                 potentialCollisions.push_back(j);
-            }
+            //}
         }
     }
+    broad_count_since_check += potentialCollisions.size();
 }
 
 // Determine which object collided
@@ -96,9 +177,9 @@ void CCPhysicsEngine::narrow_phase() {
 
         CircleColl* next = potentialCollisions.back();
         potentialCollisions.pop_back();
-
         if (waiting) {
             if (waiting->is_colliding_with(next)) {
+                ++collision_compare_count_since_check;
                 // confirmedCollisions.push_back(waiting);
                 // confirmedCollisions.push_back(next);
                 evaluate_collision(waiting, next);
@@ -111,11 +192,44 @@ void CCPhysicsEngine::narrow_phase() {
     }
 }
 
+void CCPhysicsEngine::track_node_internal(NodeInternal* node_internal) {
+    trackedObjects[node_internal->id] = node_internal;
+}
+
 void CCPhysicsEngine::evaluate_collision(CircleColl* a, CircleColl* b) {
-    UtilityFunctions::print(Variant("CC_PHYS: Collision encountered!"));
+    ++collision_eval_count_since_check;
+    //UtilityFunctions::print(Variant("CC_PHYS: Collision encountered!"));
 }
 
 void CCPhysicsEngine::evaluate_phase() {
-    while (!confirmedCollisions.empty()) {
-    }
+    //while (!confirmedCollisions.empty()) {
+    //}
+}
+
+void CCPhysicsEngine::run_diagnosis() {
+    // The string built like this and printed has been proven to work.
+    // broad_compare_since_check = 1500;
+    long avg_broad_compare_since_check = broad_compare_since_check / frames_between_checks;
+    long avg_broad_count_since_check = broad_count_since_check / frames_between_checks;
+    long avg_narrow_count_since_check = narrow_count_since_check / frames_between_checks;
+    long avg_collision_compare_count_since_check = collision_compare_count_since_check / frames_between_checks; 
+    long avg_collision_eval_count_since_check = collision_eval_count_since_check / frames_between_checks; 
+    int objects_tracked = trackedObjects.size();
+    String summary = 
+    String(Variant("CC_PHYS Diagnosis (averages are per frame over frame section since the previous diagnosis)\n")) 
+    + String(Variant("   \nTracked internal object count: ")) + UtilityFunctions::str(Variant(objects_tracked))
+    //+ String(Variant(",   \nTracked collider count: ")) + UtilityFunctions::str(Variant(trackedColls.size()))
+    + String(Variant(",   \nAverage broad compare since check: ")) + UtilityFunctions::str(Variant(avg_broad_compare_since_check))
+    + String(Variant(",   \nAverage broad compare since check: ")) + UtilityFunctions::str(Variant(avg_broad_compare_since_check))
+    + String(Variant(",  \nAverage broad count since check: ")) + UtilityFunctions::str(Variant(avg_broad_count_since_check))
+    + String(Variant(",  \nAverage narrow count since check: ")) + UtilityFunctions::str(Variant(avg_narrow_count_since_check))
+    + String(Variant(",  \nAverage collision compare count since check: ")) + UtilityFunctions::str(Variant(avg_collision_compare_count_since_check))
+    + String(Variant(",  \nAverage collision evaluate count since check: ")) + UtilityFunctions::str(Variant(avg_collision_eval_count_since_check));
+    UtilityFunctions::print(summary);
+    broad_compare_since_check = 0;
+    broad_count_since_check = 0;
+    narrow_count_since_check = 0;
+    collision_compare_count_since_check = 0;
+    collision_eval_count_since_check = 0;
+    frames_since_check = 0;
 }

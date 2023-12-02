@@ -1,12 +1,14 @@
-#ifndef CC_COLLIDER_HOLDER
-#define CC_COLLIDER_HOLDER
+#ifndef CC_NODE_3D
+#define CC_NODE_3D
 
 #include <godot_cpp/classes/node3d.hpp>
 #include <circle_coll.h>
+#include <node_internal.h>
+#include <cc_physics_engine.h>
 
 namespace godot {
-    class CCColliderHolder : public Node3D {
-        GDCLASS(CCColliderHolder, Node3D)
+    class CCNode3D : public Node3D {
+        GDCLASS(CCNode3D, Node3D)
 
         private:
         double time_passed;
@@ -18,21 +20,14 @@ namespace godot {
 
         public:
         Node3D* owning_node;
-        int owner_id;
+        NodeInternal* node_internal;
 
-        std::vector<CircleColl*> held_colliders;
-
-        V2 input_direction;
-        V2 position;
-        V2 velocity;
-        V2 acceleration;
-
-        CCColliderHolder();
-        ~CCColliderHolder();
+        CCNode3D();
+        ~CCNode3D();
 
         void _process(double delta) override;
 
-        void initialize(Node3D* owner, int _owner_id, Vector2 _position);
+        void initialize(Node3D* owner, int id, Vector2 _position);
 
         Node3D* get_owning_node() const;
         void set_owning_node(Node3D* const direction);
@@ -42,6 +37,10 @@ namespace godot {
 
         void add_circle_coll(const Vector2 _center_offset, const float _radius);
         std::vector<CircleColl*> get_circle_colls();
+
+        void add_behavior_controller(int selection);
+
+        void give_to_engine(CCPhysicsEngine* engine);
     };
 }
 

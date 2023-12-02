@@ -1,8 +1,7 @@
 #include "register_types.h"
 
-#include "gdexample.h"
 #include "cc_physics_engine.h"
-#include "cc_node_3d.h"
+#include "cc_collider_holder.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
@@ -16,7 +15,7 @@ void initialize_main_module(ModuleInitializationLevel p_level) {
         return;
     }
     ClassDB::register_class<CCPhysicsEngine>();
-    ClassDB::register_class<CCColliderHolder>();
+    ClassDB::register_class<CCNode3D>();
 }
 
 void uninitialize_main_module(ModuleInitializationLevel p_level) {
