@@ -7,7 +7,7 @@
 using namespace godot;
 
 void CCPhysicsEngine::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("initialize", "time_per_custom_process"), &CCPhysicsEngine::initialize);
+    ClassDB::bind_method(D_METHOD("initialize", "time_per_custom_process", "time_per_ai_process"), &CCPhysicsEngine::initialize);
     ClassDB::bind_method(D_METHOD("set_diagnosis", "diagnosis_on"), &CCPhysicsEngine::set_diagnosis);
 }
 
@@ -26,7 +26,9 @@ CCPhysicsEngine::~CCPhysicsEngine() {
     // cleanup
 }
 
-void CCPhysicsEngine::initialize(double time_per_custom_process) {
+void CCPhysicsEngine::initialize(double time_per_custom_process, double time_per_ai_process) {
+    physics_process_timer = BasicTimer(time_per_custom_process);
+    ai_process_timer = BasicTimer(time_per_ai_process);
     initialized = true;
     UtilityFunctions::print(Variant("CC_PHYS: Custom physics engine initialized!"));
 }
@@ -45,9 +47,6 @@ void CCPhysicsEngine::_process(double delta) {
             ai_process(ai_process_timer.time_per_action);
             --ai_ticks;
         }
-        // vec full holder iter, 183 fps
-        // map kv iter, ~173 fps
-        // cycle list full holder iter, 165 fps
 
         double progress = physics_process_timer.time_since_last_action;        
 
@@ -71,36 +70,7 @@ void CCPhysicsEngine::_process(double delta) {
                 UtilityFunctions::print(Variant("CC_PHYS: Owning game node uninitialized!"));
             }
         }
-
-        // Note that a null reference exception caused the running game to not crash, but rather exit this function.
-/*         int siz = trackedCollHolders.size_filled();
-        for (int i = 0; i < siz; ++i) {
-            CCColliderHolder* next_obj = *(trackedCollHolders.peek_advance_next());
-            if (next_obj->owning_node) {
-                Vector3 pos = next_obj->owning_node->get_position();
-                //UtilityFunctions::print(Variant(pos)); // this worked
-                Vector3 next_pos = Vector3
-                    (
-                        pos.x + 0.5 * delta,//value->input_direction.x * delta,
-                        pos.y + 0.4 * delta,//value->input_direction.y * delta, 
-                        pos.z
-                    );
-                //UtilityFunctions::print(Variant("CC_PHYS: pos :"), pos, Variant(" next_pos: "), next_pos);
-                //UtilityFunctions::print(Variant("CC_PHYS: A!"));
-                next_obj->owning_node->set_position(next_pos);
-                //Vector3 pos2 = next_obj->owning_node->get_position();
-
-                //UtilityFunctions::print(Variant("CC_PHYS: B!"));
-                V2 next_pos_v2 = V2(next_pos.x, next_pos.y);
-                next_obj->position = next_pos_v2;
-                for (auto i : next_obj->held_colliders) {
-                    i->position = next_pos_v2 + i->center_offset;
-                }
-            }
-            else {
-                UtilityFunctions::print(Variant("CC_PHYS: Owning node uninitialized!"));
-            }
-        } */
+        // Note that at one point a null reference exception caused the running game to not crash, but rather exit this function.
     }
 }
 
@@ -131,11 +101,12 @@ void CCPhysicsEngine::custom_phys_process(double delta) {
         }
     }
 
+    // Collision evaluation
     //broad_phase();
     //narrow_phase();
     //evaluate_phase();
 
-
+    // Next velocities calculated
     for (auto& [key, value] : trackedObjects) {
         if (value.owning_game_node) {
             // Keeps it zero before input for now

@@ -45,7 +45,7 @@ namespace godot {
         CCPhysicsEngine();
         ~CCPhysicsEngine();
 
-        void initialize(double time_per_custom_process);
+        void initialize(double time_per_custom_process, double time_per_ai_process);
         void set_diagnosis(bool _diagnosis_on);
 
         void _process(double delta) override;

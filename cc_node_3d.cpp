@@ -64,7 +64,6 @@ void godot::CCNode3D::add_behavior_controller(int selection) {
 
     // Doing a func(&var_name) will pass a pointer by value.
     node_internal->controllers.push_back(bc);
-    UtilityFunctions::print(Variant("CC_PHYS AA!"));
 }
 
 // todo : evaluate safety, speed, etc of return
