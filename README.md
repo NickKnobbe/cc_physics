@@ -1,14 +1,11 @@
 # cc_physics
-
-## Objectives
-Carnage Physics aims to create a physics engine for Godot
+CC Physics aims to create a physics engine for Godot
 that can be used as an efficient 2D engine in 3D projects.
 The main objective is performance. 
 
+## Benchmarking and Notes
 Godot 4.x GDExtension with C++ is used. I debated using Rust, but I chose
 C++ since the engine itself is written in C++.
-
-## Benchmarking and Notes
 
 Until another test is mentioned, it can be assumed that the previously-mentioned benchmarking test is used.
 
