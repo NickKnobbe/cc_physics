@@ -1,7 +1,7 @@
 # cc_physics
 CC Physics aims to create a physics engine for Godot
 that can be used as an efficient 2D engine in 3D projects.
-The main objective is performance. 
+The main objective is performance.
 
 ## Benchmarking and Notes
 Godot 4.x GDExtension with C++ is used. I debated using Rust, but I chose
